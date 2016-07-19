@@ -3,6 +3,9 @@
 #include <sstream>
 
 #include <SDL.h>
+#include <GL/glew.h>
+
+#include "shader.h"
 
 int main(int argc, const char *argv[])
 {
@@ -19,6 +22,12 @@ int main(int argc, const char *argv[])
         std::cerr << "Failed to create an SDL renderer." << std::endl;
         return -1;
     }
+
+    SDL_GLContext context = SDL_GL_CreateContext(window);
+    SDL_GL_MakeCurrent(window, context);
+
+    glewExperimental = 1;
+    glewInit();
 
     SDL_Event event;
     do {
