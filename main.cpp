@@ -2,35 +2,38 @@
 #include <fstream>
 #include <sstream>
 
-#include <SDL.h>
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #include "shader.h"
 #include "texture.h"
 
 int main(int argc, const char *argv[])
 {
-    SDL_Init(SDL_INIT_VIDEO);
-
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-    SDL_Window *window = SDL_CreateWindow("OpenGL ComputeShader test", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 480, 360, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-    if(window == nullptr) {
-        std::cerr << "Failed to create an SDL window." << std::endl;
+    if(!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW3." << std::endl;
         return -1;
     }
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-    if(renderer == nullptr) {
-        std::cerr << "Failed to create an SDL renderer." << std::endl;
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
+    GLFWwindow *window = glfwCreateWindow(640, 480, "Compute Shader Test", NULL, NULL);
+    if(!window) {
+        std::cerr << "Failed to create a GLFW window." << std::endl;
         return -1;
     }
 
-    SDL_GLContext context = SDL_GL_CreateContext(window);
-    SDL_GL_MakeCurrent(window, context);
+    glfwMakeContextCurrent(window);
 
     glewExperimental = 1;
     glewInit();
+
+    std::cout << "Vendor:" << glGetString(GL_VENDOR) << std::endl;
+    std::cout << "Renderer:" << glGetString(GL_RENDERER) << std::endl;
+    std::cout << "Version:" << glGetString(GL_VERSION) << std::endl;
+    std::cout << "Shader Language Version:" << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
     if(GLEW_ARB_compute_shader) {
         std::cerr << "ARB_compute_shader extension supported." << std::endl;
@@ -47,36 +50,38 @@ int main(int argc, const char *argv[])
 
     glEnable(GL_TEXTURE_2D);
 
+    GLuint vertex_array;
+    glGenVertexArrays(1, &vertex_array);
+    glBindVertexArray(vertex_array);
+
     std::cout << "X = " << ComputeShader::get_max_localsize_x() << std::endl;
     std::cout << "Y = " << ComputeShader::get_max_localsize_y() << std::endl;
     std::cout << "Z = " << ComputeShader::get_max_localsize_z() << std::endl;
 
     {
-        ComputeShader shader("compute.glsl");
+        ComputeShader compute_shader("shader.comp");
+        Shader shader("shader.vert", "shader.frag");
         //Texture input("opengl_logo.bmp");
         Texture output(512, 512);
 
-        SDL_Event event;
-        do {
-            while(SDL_PollEvent(&event)) {
-                if(event.type == SDL_QUIT) break;
-            }
-            shader.use();
+        while(!glfwWindowShouldClose(window)) {
+            //glClearColor(1, 1, 1, 1);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            compute_shader.use();
+            glUniform1i(0, 0);
             //input.bind_image(0, GL_READ_ONLY);
             output.bind_image(0, GL_WRITE_ONLY);
             glDispatchCompute(32, 32, 1);
             glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT);
-            glUseProgram(0);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            shader.use();
+            glUniform1i(0, 0);
             output.render();
-            SDL_GL_SwapWindow(window);
-        } while(event.type != SDL_QUIT);
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
     }
 
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-
-    SDL_Quit();
+    glfwTerminate();
 
     return 0;
 }

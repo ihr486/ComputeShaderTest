@@ -8,20 +8,14 @@
 
 ComputeShader::ComputeShader(const char *filename)
 {
-    GLuint m_program = glCreateProgram();
+    m_program = glCreateProgram();
     GLuint compute_shader = glCreateShader(GL_COMPUTE_SHADER);
-    /*std::ifstream source_file(filename);
+    std::ifstream source_file(filename);
     std::ostringstream source_stream;
     source_stream << source_file.rdbuf();
     std::string source_string = source_stream.str();
-    std::cout << source_string << std::endl;*/
-    const GLchar *source_list[] = {
-"layout(local_size_x = 8, local_size_y = 8) in;\n"
-"uniform writeonly image2D output;\n"
-"void main()\n"
-"{\n"
-"    imageStore(output, ivec2(gl_GlobalInvocationID), vec4(1, 1, 1, 1));\n"
-"}\n"};
+    std::cout << source_string << std::endl;
+    const GLchar *source_list[] = {source_string.c_str()};
     glShaderSource(compute_shader, 1, source_list, NULL);
     glCompileShader(compute_shader);
     GLint result;
@@ -52,7 +46,6 @@ ComputeShader::ComputeShader(const char *filename)
 void ComputeShader::use()
 {
     glUseProgram(m_program);
-    glUniform1i(glGetUniformLocation(m_program, "output"), 0);
 }
 
 ComputeShader::~ComputeShader()
@@ -84,4 +77,70 @@ GLint ComputeShader::get_max_localsize_z()
 GLuint ComputeShader::get_uniform_location(const char *name)
 {
     return glGetUniformLocation(m_program, name);
+}
+
+Shader::Shader(const char *vertex_path, const char *fragment_path)
+{
+    m_program = glCreateProgram();
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    std::ifstream vertex_file(vertex_path);
+    std::ostringstream vertex_stream;
+    vertex_stream << vertex_file.rdbuf();
+    std::string vertex_string = vertex_stream.str();
+    std::cout << vertex_string << std::endl;
+    const GLchar *vertex_list[] = {vertex_string.c_str()};
+    glShaderSource(vertex_shader, 1, vertex_list, NULL);
+    glCompileShader(vertex_shader);
+    GLint result;
+    glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &result);
+    if(!result) {
+        GLint length;
+        glGetShaderiv(vertex_shader, GL_INFO_LOG_LENGTH, &length);
+        std::vector<char> log(length + 1);
+        glGetShaderInfoLog(vertex_shader, length, NULL, log.data());
+        log[length] = '\0';
+        std::cerr << "Error while compiling vertex shader:" << log.data() << std::endl;
+    }
+    glAttachShader(m_program, vertex_shader);
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    std::ifstream fragment_file(fragment_path);
+    std::ostringstream fragment_stream;
+    fragment_stream << fragment_file.rdbuf();
+    std::string fragment_string = fragment_stream.str();
+    std::cout << fragment_string << std::endl;
+    const GLchar *fragment_list[] = {fragment_string.c_str()};
+    glShaderSource(fragment_shader, 1, fragment_list, NULL);
+    glCompileShader(fragment_shader);
+    glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &result);
+    if(!result) {
+        GLint length;
+        glGetShaderiv(fragment_shader, GL_INFO_LOG_LENGTH, &length);
+        std::vector<char> log(length + 1);
+        glGetShaderInfoLog(fragment_shader, length, NULL, log.data());
+        log[length] = '\0';
+        std::cerr << "Error while compiling fragment shader:" << log.data() << std::endl;
+    }
+    glAttachShader(m_program, fragment_shader);
+    glLinkProgram(m_program);
+    glGetProgramiv(m_program, GL_LINK_STATUS, &result);
+    if(!result) {
+        GLint length;
+        glGetProgramiv(m_program, GL_INFO_LOG_LENGTH, &length);
+        std::vector<char> log(length + 1);
+        glGetProgramInfoLog(m_program, length, NULL, log.data());
+        log[length] = '\0';
+        std::cerr << "Error while linking vertex and fragment shaders:" << log.data() << std::endl;
+    }
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
+}
+
+Shader::~Shader()
+{
+    glDeleteProgram(m_program);
+}
+
+void Shader::use()
+{
+    glUseProgram(m_program);
 }

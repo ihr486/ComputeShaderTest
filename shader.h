@@ -16,4 +16,13 @@ public:
     GLuint get_uniform_location(const char *name);
 };
 
+class Shader
+{
+    GLuint m_program;
+public:
+    Shader(const char *vertex_path, const char *fragment_path);
+    ~Shader();
+    void use();
+};
+
 #endif
